@@ -22,6 +22,8 @@
 			this.period = period;
 			this.tilt = tilt;
 			this.epoch = epoch;
+			this.size = size
+			this.BASEINTENSITY = lightIntensity;
 
 			var geometry = new THREE.SphereGeometry(size, 15, 15);
 			var material = new THREE.MeshBasicMaterial( {color: color} );
@@ -51,8 +53,9 @@
 			this.celestial.position.z = -this.target.position.z * 400;
 		}
 
-
-
+		illuminate(sunAngle) {
+			this.light.intensity = Math.abs(this.angle - sunAngle) / Math.PI * this.BASEINTENSITY;
+		}
 	}
 
 	var seed = 1337;
@@ -228,10 +231,11 @@
 	}
 
 	function moveLight(delta, now) {
-		time += delta * 0.1;
+		time += delta * 1;
 
 		sun.move(time);
 		moon.move(time);
+		moon.illuminate(sun.angle);
 	}
 
 	function updateSky(delta, now) {
@@ -244,13 +248,17 @@
 		b = skyCurves[lower].b + (sunAngle - lower) * ((skyCurves[upper].b - skyCurves[lower].b) / (upper - lower));
 
 		renderer.setClearColor(new THREE.Color("rgb(" + Math.floor(r) + "%, " + Math.floor(g) + "%, " + Math.floor(b) + "%)"));
+	}
 
-		graphr = " ".repeat(r/5) + "r";
-		graphg = " ".repeat(g/5) + "g";
-		graphb = " ".repeat(b/5) + "b";
-		console.log(graphr);
-		console.log(graphg);
-		console.log(graphb);
+	function eclipse(delta, now) {
+		sunMoonDistance = sun.celestial.position.distanceTo(moon.celestial.position);
+
+		sunRadius = sun.size;
+		moonRadius = moon.size;
+
+		if (sunMoonDistance < sunRadius + moonRadius) {
+			sun.light.intensity = sunMoonDistance / (sunRadius + moonRadius) * 0.8;
+		}
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////
@@ -309,6 +317,7 @@
 
 	onRenderFcts.push(moveLight);
 	onRenderFcts.push(updateSky);
+	onRenderFcts.push(eclipse);
 
 	// run the rendering loop
 	var lastTimeMsec= null
