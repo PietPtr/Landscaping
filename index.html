@@ -6,8 +6,8 @@
 
 </div><body style='margin: 0px; overflow: hidden; text-align:center;'><script>
 	function diamondSquare(n) {
-		const BASEMOD = 490
-		const TAPER = (modifier) => { console.log(modifier); return modifier / 1.45; };
+		const BASEMOD = 400
+		const TAPER = (modifier) => { return modifier / 1.45; };
 
 		var size = Math.pow(2, n) + 1
 		var modifier = BASEMOD;
@@ -81,7 +81,25 @@
 	}
 
 	function smooth(map) {
-		console.log(map);
+		for (var y = 0; y < map.length; y++) {
+			for (var x = 0; x < map.length; x++) {
+				sum = 0;
+				summed = 0;
+
+				for (var nx = -1; nx <= 1; nx++) {
+					for (var ny = -1; ny <= 1; ny++) {
+						neighbourx = x + nx;
+						neighboury = y + ny;
+
+						if (neighbourx >= 0 && neighboury >= 0 &&
+							neighbourx < map.length && neighboury < map.length) {
+							summed += 1;
+							sum += map[neighbourx][neighboury];
+						}
+					}
+				}
+			}
+		}
 
 		return map;
 	}
@@ -124,8 +142,6 @@
 				under = base + size * 2 + 1;
 				rightUnder = base + size * 2 + 2;
 
-
-
 				geometry.faces.push( new THREE.Face3(
 					rightUnder,
 					under,
@@ -146,6 +162,17 @@
 
 		geometry.computeBoundingSphere();
 		return geometry;
+	}
+
+	function moveLight(delta, now) {
+		console.log(delta, now, lightAngle);
+		lightAngle += delta * 2;
+		light.position.x = Math.cos(lightAngle) * 150;
+		light.position.z = Math.sin(lightAngle) * 150;
+		light.position.y = 230 + Math.sin(lightAngle) * 50;
+
+		sphere.position = light.position;
+
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////
@@ -174,13 +201,24 @@
 	//		add an object in the scene
 	//////////////////////////////////////////////////////////////////////////////////
 
-	var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.9 );
-	scene.add( directionalLight );
+	// var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
+	// scene.add( directionalLight );
+
+	var lightAngle = 0
+	var light = new THREE.PointLight( 0xffffab, 1, 1000 );
+	light.position.set( 0, 200, 0 );
+	scene.add( light );
+
+	var geometry = new THREE.SphereGeometry(1, 5, 5);
+	var material = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+	var sphere = new THREE.Mesh( geometry, material );
+	scene.add( sphere );
 
 	var n = 9
-	var geometry = getSquareMesh(smooth(diamondSquare(n)), n);
+	var geometry = getSquareMesh(diamondSquare(n), n);
 	var material = new THREE.MeshPhongMaterial();
 	var mesh = new THREE.Mesh(geometry, material);
+	mesh.geometry.computeVertexNormals();
 	scene.add(mesh);
 
 	//////////////////////////////////////////////////////////////////////////////////
@@ -198,6 +236,8 @@
 	onRenderFcts.push(function(){
 		renderer.render( scene, camera );
 	})
+
+	onRenderFcts.push(moveLight);
 
 	// run the rendering loop
 	var lastTimeMsec= null
