@@ -2,6 +2,7 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <script src='vendor/three.js/build/three.min.js'></script>
 <script src='vendor/three.js/examples/js/controls/OrbitControls.js'></script>
+<script src='vendor/three.js/examples/js/controls/FirstPersonControls.js'></script>
 <div style='position: absolute; top: 0px; width: 100%;font-family:arial; font-weight: bolder; padding-top: 5px;'>
 
 </div><body style='margin: 0px; overflow: hidden; text-align:center;'><script>
@@ -18,12 +19,13 @@
 	}
 
 	class Celestial {
-		constructor(size, color, period, epoch, lightColor, lightIntensity, tilt) {
+		constructor(size, color, period, epoch, lightColor, lightIntensity, hasShadow) {
 			this.period = period;
-			this.tilt = tilt;
+			// this.tilt = tilt;
 			this.epoch = epoch;
 			this.size = size
 			this.BASEINTENSITY = lightIntensity;
+			// this.hasShadow = hasShadow;
 
 			var geometry = new THREE.SphereGeometry(size, 15, 15);
 			var material = new THREE.MeshBasicMaterial( {color: color} );
@@ -39,6 +41,14 @@
 
 			this.light.position = new THREE.Vector3(0, 0, 0);
 			this.light.target = this.target;
+
+			// if (this.hasShadow) {
+			// 	var geometry = new THREE.SphereGeometry(size+1, 15, 15, 0, Math.PI);
+			// 	var material = new THREE.MeshBasicMaterial( {color: 0xff0000 } );
+			// 	this.shadowSphere = new THREE.Mesh( geometry, material );
+			// 	scene.add(this.shadowSphere);
+			// }
+
 		}
 
 		move(time) {
@@ -55,6 +65,10 @@
 
 		illuminate(sunAngle) {
 			this.light.intensity = Math.abs(this.angle - sunAngle) / Math.PI * this.BASEINTENSITY;
+
+			// Shouldn't do it this way, use circles or something
+			// this.shadowSphere.position = this.celestial.position;
+			// this.shadowSphere.material.color.setHex(skyColor);
 		}
 	}
 
@@ -208,12 +222,19 @@
 				under = base + size * 2 + 1;
 				rightUnder = base + size * 2 + 2;
 
+				color = 0x11c120;
+				if (map[z][x] > 100) {
+					color = 0x9a9a9a;
+				} else if (map[z][x] > 75) {
+					color = 0x0b5912;
+				}
+
 				geometry.faces.push( new THREE.Face3(
 					rightUnder,
 					under,
 					base,
 					getNormal(geometry.vertices[under], geometry.vertices[base], geometry.vertices[rightUnder]),
-					new THREE.Color(0xffffff)
+					new THREE.Color(color)
 				));
 
 				geometry.faces.push( new THREE.Face3(
@@ -221,7 +242,7 @@
 					right,
 					rightUnder,
 					getNormal(geometry.vertices[base], geometry.vertices[right], geometry.vertices[rightUnder]),
-					new THREE.Color(0xffffff)
+					new THREE.Color(color)
 				))
 			}
 		}
@@ -231,7 +252,7 @@
 	}
 
 	function moveLight(delta, now) {
-		time += delta * 1;
+		time += delta * 0.4;
 
 		sun.move(time);
 		moon.move(time);
@@ -246,6 +267,8 @@
 		r = skyCurves[lower].r + (sunAngle - lower) * ((skyCurves[upper].r - skyCurves[lower].r) / (upper - lower));
 		g = skyCurves[lower].g + (sunAngle - lower) * ((skyCurves[upper].g - skyCurves[lower].g) / (upper - lower));
 		b = skyCurves[lower].b + (sunAngle - lower) * ((skyCurves[upper].b - skyCurves[lower].b) / (upper - lower));
+
+		skyColor = ((Math.floor(r / 100 * 255) << 16) + (Math.floor(g / 100 * 255) << 8) + (Math.floor(b / 100 * 255)));
 
 		renderer.setClearColor(new THREE.Color("rgb(" + Math.floor(r) + "%, " + Math.floor(g) + "%, " + Math.floor(b) + "%)"));
 	}
@@ -279,22 +302,28 @@
 	// init scene and camera
 	var scene	= new THREE.Scene();
 	var camera	= new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
-	camera.position.x = 400
-	camera.position.y = 200
-	var controls	= new THREE.OrbitControls(camera)
+	camera.position.x = 127;
+	camera.position.y = 251;
+	camera.position.z = 95;
+	camera.rotation.x = -0.0;
+	camera.rotation.y = 0.0;
+	camera.rotation.z = 0.0;
+	var controls	= new THREE.OrbitControls(camera);
 
 	//////////////////////////////////////////////////////////////////////////////////
 	//		add an object in the scene
 	//////////////////////////////////////////////////////////////////////////////////
 
-	var time = 0; // current time in hours
+	var time = 24*12; // current time in hours
+	var skyColor = {r: 0, g: 0, b: 0};
 
-	let sun = new Celestial(5, 0xffffaa, 24, 26, 0xffffcc, 0.8);
-	let moon = new Celestial(5.1, 0xffffff, 25, 27.2, 0xffffff, 0.1);
+	let sun = new Celestial(5, 0xffffaa, 24, 26, 0xffffcc, 0.8, false);
+	let moon = new Celestial(5.1, 0xffffff, 25, 27.2, 0xffffff, 0.1, true);
 
 	var n = 9
-	var geometry = getSquareMesh(smooth(smooth(diamondSquare(n), 20), 3), n);
-	var material = new THREE.MeshPhongMaterial();
+	var map = smooth(smooth(diamondSquare(n), 20), 3);
+	var geometry = getSquareMesh(map, n);
+	var material = new THREE.MeshPhongMaterial( { vertexColors: THREE.FaceColors } );
 	var mesh = new THREE.Mesh(geometry, material);
 	mesh.geometry.computeVertexNormals();
 	scene.add(mesh);
